@@ -1,0 +1,189 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Funny Obstacle Game</title>
+<style>
+  canvas {
+    border: 1px solid #d3d3d3;
+    background-color: #f1f1f1;
+    display: block;
+    margin: 20px auto;
+  }
+  #controls, #game-over {
+    text-align: center;
+    margin-top: 10px;
+  }
+  button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <button onmousedown="moveup()" onmouseup="stopMove()" ontouchstart="moveup()" ontouchend="stopMove()">⬆️ UP</button>
+  <button onmousedown="movedown()" onmouseup="stopMove()" ontouchstart="movedown()" ontouchend="stopMove()">⬇️ DOWN</button>
+  <button onmousedown="moveleft()" onmouseup="stopMove()" ontouchstart="moveleft()" ontouchend="stopMove()">⬅️ LEFT</button>
+  <button onmousedown="moveright()" onmouseup="stopMove()" ontouchstart="moveright()" ontouchend="stopMove()">➡️ RIGHT</button>
+</div>
+
+<div id="game-over" style="display: none;">
+  <h2 id="final-message"></h2>
+  <button onclick="restartGame()">🔁 Restart</button>
+</div>
+
+<script>
+let myObstacles = [];
+let myGamePiece;
+let myScore;
+let username = "";
+let gameEnded = false;
+
+const myGameArea = {
+  canvas: document.createElement("canvas"),
+  start: function () {
+    this.canvas.width = 480;
+    this.canvas.height = 270;
+    this.context = this.canvas.getContext("2d");
+    document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+    this.frameNo = 0;
+    this.keys = {};
+    this.interval = setInterval(updateGameArea, 20);
+    window.addEventListener('keydown', function (e) {
+      myGameArea.keys[e.key] = true;
+    });
+    window.addEventListener('keyup', function (e) {
+      myGameArea.keys[e.key] = false;
+    });
+  },
+  clear: function () {
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  },
+  stop: function () {
+    clearInterval(this.interval);
+  }
+};
+
+class component {
+  constructor(width, height, color, x, y, type) {
+    this.type = type;
+    this.width = width;
+    this.height = height;
+    this.color = color;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.x = x;
+    this.y = y;
+    this.text = "";
+  }
+
+  update() {
+    const ctx = myGameArea.context;
+    if (this.type === "text") {
+      ctx.font = this.width + " " + this.height;
+      ctx.fillStyle = this.color;
+      ctx.fillText(this.text, this.x, this.y);
+    } else {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+  }
+
+  newPos() {
+    this.x += this.speedX;
+    this.y += this.speedY;
+  }
+
+  crashWith(other) {
+    return !(
+      this.y + this.height < other.y ||
+      this.y > other.y + other.height ||
+      this.x + this.width < other.x ||
+      this.x > other.x + other.width
+    );
+  }
+}
+
+function everyinterval(n) {
+  return (myGameArea.frameNo / n) % 1 === 0;
+}
+
+function startGame() {
+  username = prompt("Welcome! What's your name? 😄");
+  if (!username) username = "Player";
+
+  myGamePiece = new component(30, 30, "red", 10, 120);
+  myScore = new component("30px", "Consolas", "black", 350, 40, "text");
+  myObstacles = [];
+  gameEnded = false;
+  document.getElementById("game-over").style.display = "none";
+  myGameArea.start();
+}
+
+function updateGameArea() {
+  for (let i = 0; i < myObstacles.length; i++) {
+    if (myGamePiece.crashWith(myObstacles[i])) {
+      myGameArea.stop();
+      gameEnded = true;
+      document.getElementById("final-message").innerText =
+        "🎉 Youpi " + username + "! Your score is: " + myGameArea.frameNo + " 🎉";
+      document.getElementById("game-over").style.display = "block";
+      return;
+    }
+  }
+
+  myGameArea.clear();
+  myGameArea.frameNo++;
+
+  if (myGameArea.frameNo === 1 || everyinterval(150)) {
+    let x = myGameArea.canvas.width;
+    let height = Math.floor(Math.random() * 200 + 20);
+    let gap = Math.floor(Math.random() * 80 + 50);
+    myObstacles.push(new component(10, height, "green", x, 0));
+    myObstacles.push(new component(10, 270 - height - gap, "green", x, height + gap));
+  }
+
+  for (let i = 0; i < myObstacles.length; i++) {
+    myObstacles[i].x -= 2;
+    myObstacles[i].update();
+  }
+
+  // Reset speed
+  myGamePiece.speedX = 0;
+  myGamePiece.speedY = 0;
+  if (myGameArea.keys) {
+    if (myGameArea.keys["ArrowLeft"]) myGamePiece.speedX = -2;
+    if (myGameArea.keys["ArrowRight"]) myGamePiece.speedX = 2;
+    if (myGameArea.keys["ArrowUp"]) myGamePiece.speedY = -2;
+    if (myGameArea.keys["ArrowDown"]) myGamePiece.speedY = 2;
+  }
+
+  myGamePiece.newPos();
+  myGamePiece.update();
+  myScore.text = "SCORE: " + myGameArea.frameNo;
+  myScore.update();
+}
+
+function moveup() { if (!gameEnded) myGamePiece.speedY = -2; }
+function movedown() { if (!gameEnded) myGamePiece.speedY = 2; }
+function moveleft() { if (!gameEnded) myGamePiece.speedX = -2; }
+function moveright() { if (!gameEnded) myGamePiece.speedX = 2; }
+function stopMove() { if (!gameEnded) { myGamePiece.speedX = 0; myGamePiece.speedY = 0; } }
+
+function restartGame() {
+  myGameArea.stop();
+  const canvas = myGameArea.canvas;
+  canvas.parentNode.removeChild(canvas);
+  myGameArea.canvas = document.createElement("canvas");
+  startGame();
+}
+
+// Start the game
+startGame();
+</script>
+
+</body>
+</html>
